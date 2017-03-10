@@ -1,4 +1,4 @@
-# AADGraphPowerShell
+# AADGraphPowerShell - B2C Local Accounts
 Cmdlets in a PowerShell script module that access Windows Azure AD Graph APIs
 
 This fork implements commands for **B2C Local Accounts**!
