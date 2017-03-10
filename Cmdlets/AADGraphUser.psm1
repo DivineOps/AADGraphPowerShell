@@ -6,6 +6,12 @@ function Get-AADUser {
     HelpMessage="Either the ObjectId or the UserPrincipalName of the User.")]
     [string]
     $Id,
+	
+	[parameter(Mandatory=$false,
+    ValueFromPipeline=$true,
+    HelpMessage="SignInNames (Email) of the User with a local account.")]
+    [string]
+    $SignInNames,
     
     [parameter(Mandatory=$false,
     HelpMessage="Suppress console output.")]
@@ -17,6 +23,10 @@ function Get-AADUser {
       if($Silent){Get-AADObjectById -Type "users" -Id $id -Silent}
       else{Get-AADObjectById -Type "users" -Id $id}
     }
+	elseif($SignInNames -ne $null -and $SignInNames -ne ""){
+	 if($Silent){Get-AADObjectFilter -Type "users" -SignInNames $SignInNames -Silent}
+      else{Get-AADObjectFilter -Type "users" -SignInNames $SignInNames}
+	}
     else {
       if($Silent){Get-AADObject -Type "users" -Silent}
       else{Get-AADObject -Type "users"}
@@ -42,11 +52,16 @@ function New-AADUser {
     [string]
     $mailNickname, 
     
-    [parameter(Mandatory=$true, ValueFromPipelineByPropertyName=$true,
-    HelpMessage="This is the user name that the new user will use for login. By convention, this should map to the user's email name. The general format is alias@domain, where domain must be present in the tenant’s collection of verified domains.")]
-    [string]
-    $userPrincipalName, 
+    # [parameter(Mandatory=$true, ValueFromPipelineByPropertyName=$true,
+    # HelpMessage="This is the user name that the new user will use for login. By convention, this should map to the user's email name. The general format is alias@domain, where domain must be present in the tenant’s collection of verified domains.")]
+    # [string]
+    # $userPrincipalName, 
     
+	[parameter(Mandatory=$true, ValueFromPipelineByPropertyName=$true,
+    HelpMessage="This is the user email that the new user will use for login. The general format is alias@domain")]
+    [string]
+    $userEmail, 
+	
     [parameter(Mandatory=$true, ValueFromPipelineByPropertyName=$true,
     HelpMessage="The display name of the new user.")]
     [string]
@@ -170,12 +185,19 @@ function New-AADUser {
     $newUserPasswordProfile.password = $password
     $newUserPasswordProfile.forceChangePasswordNextLogin = $forceChangePasswordNextLogin
     
-    $newUser = "" | Select accountEnabled, displayName, mailNickname, passwordProfile, userPrincipalName
+	$signInNames = @()
+	$name = "" | Select type, value
+	$name.type = "emailAddress"
+	$name.value = $userEmail
+	$signInNames += $name
+
+	$newUser = "" | Select accountEnabled, signInNames, creationType, displayName, mailNickname, passwordProfile
     $newUser.accountEnabled = $accountEnabled
     $newUser.displayName = $displayName
     $newUser.mailNickname = $mailNickname
     $newUser.passwordProfile = $newUserPasswordProfile
-    $newUser.userPrincipalName = $userPrincipalName
+    $newUser.signInNames = $signInNames 
+	$newUser.creationType = "LocalAccount"
            
     #Optional parameters/properties
     foreach($psbp in $PSBoundParameters.GetEnumerator()){
@@ -239,10 +261,15 @@ function Set-AADUser {
     [string]
     $mailNickname, 
     
-    [parameter(Mandatory=$false,
-    HelpMessage="This is the user name that the user will use for login. By convention, this should map to the user's email name. The general format is alias@domain, where domain must be present in the tenant's collection of verified domains.")]
+    #[parameter(Mandatory=$false,
+    #HelpMessage="This is the user name that the user will use for login. By convention, this should map to the user's email name. The general format is alias@domain, where domain must be present in the tenant's collection of verified domains.")]
+    #[string]
+    #$userPrincipalName, 
+	
+	[parameter(Mandatory=$false, ValueFromPipelineByPropertyName=$true,
+    HelpMessage="This is the user email that the new user will use for login. The general format is alias@domain")]
     [string]
-    $userPrincipalName, 
+    $userEmail, 
     
     [parameter(Mandatory=$false,
     HelpMessage="The password of the user account.")]
@@ -379,8 +406,18 @@ function Set-AADUser {
       $updatedUserPasswordProfile = "" | Select password, forceChangePasswordNextLogin
       $updatedUserPasswordProfile.password = $PSBoundParameters['password'].Value
       $updatedUserPasswordProfile.forceChangePasswordNextLogin = $forceChangePasswordNextLogin
-      $updatedUser.passwordProfile = $updatedUserPasswordProfile
+	  Add-Member -InputObject $updatedUser -MemberType NoteProperty -Name "passwordProfile" -Value $updatedUserPasswordProfile
     }
+	
+	 if($PSBoundParameters.ContainsKey('userEmail')){
+	 	$signInNames = @()
+		$name = "" | Select type, value
+		$name.type = "emailAddress"
+		$name.value = $userEmail
+		$signInNames += $name
+		Add-Member -InputObject $updatedUser -MemberType NoteProperty -Name "signInNames" -Value $signInNames
+	}
+	
     if($Silent){Set-AADObject -Type users -Id $Id -Object $updatedUser -Silent}
     else{Set-AADObject -Type users -Id $Id -Object $updatedUser}
   }

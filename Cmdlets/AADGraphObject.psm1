@@ -69,6 +69,31 @@ function Get-AADObjectById([string]$Type, [string]$Id, [switch] $Silent) {
   return $object
 }
 
+#The filter is hard coded to SignInNames and will not work with any other values!
+function Get-AADObjectFilter([string]$Type, [string]$SignInNames, [switch] $Silent) {
+  $object = $null
+  if($global:aadGPoShAuthResult -ne $null){
+    $header = $global:aadGPoShAuthResult.CreateAuthorizationHeader()
+    $uri = [string]::Format("{0}{1}/{2}?api-version={4}&`$filter=signInNames/any(x:x/value%20eq%20%27{3}%27)",$global:aadGPoShGraphUrl,$global:aadGPoShAuthResult.TenantId,$Type.Trim(), $SignInNames.Trim(),$global:aadGPoShGraphVer)
+    if(-not $Silent){
+      Write-Host HTTP GET $uri -ForegroundColor Cyan
+    }
+    $result = Invoke-WebRequest -Method Get -Uri $uri -Headers @{"Authorization"=$header;"Content-Type"="application/json"}
+    if($result.StatusCode -eq 200)
+    {
+      if(-not $Silent){
+        Write-Host "Get succeeded." -ForegroundColor Cyan
+      }
+	  #one more level of depth here compared to get by ID
+      $object = (ConvertFrom-Json $result.Content).value
+    }
+  }
+  else{
+    Write-Host "Not connected to an AAD tenant. First run Connect-AAD." -ForegroundColor Yellow
+  }
+  return $object
+}
+
 function New-AADObject([string]$Type, [object]$Object, [switch] $Silent) {
   $newObject = $null
   if($global:aadGPoShAuthResult -ne $null) {

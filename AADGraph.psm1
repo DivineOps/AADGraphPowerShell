@@ -44,7 +44,7 @@ function Get-AuthenticationResult($tenant = "common", $env="prod"){
   return $authResult
 }
 
-function Connect-AAD ($tenant = "common", $env="prod", $graphVer="1.5") {
+function Connect-AAD ($tenant = "common", $env="prod", $graphVer="1.6") {
   PROCESS {
     $global:aadGPoShAuthResult = $null
     $global:aadGPoShEnv = $env
